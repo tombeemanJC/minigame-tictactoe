@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fast-Paced Tic-Tac-Toe</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --text-color: #ffffff;
+            --cell-bg: #2a2a2a;
+            --timer-green: #4caf50;
+            --timer-yellow: #ffeb3b;
+            --timer-red: #f44336;
+            --cyan-glow: #00e5ff;
+            --water-glow: #82b1ff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 10px;
+            min-height: 100vh;
+            box-sizing: border-box;
+            touch-action: manipulation;
+            overscroll-behavior-y: contain;
+            overflow: hidden;
+        }
+
+        #debug-bar {
+            width: 100%;
+            max-width: 350px;
+            display: flex;
+            justify-content: flex-end;
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        #debug-bar label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        #debug-bar input {
+            margin-right: 6px;
+            cursor: pointer;
+        }
+
+        h1 {
+            margin: 0 0 5px 0;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        #status-container {
+            height: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 5px;
+        }
+
+        #status {
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .huge-status {
+            font-size: 2.2rem !important;
+            text-transform: uppercase;
+            text-shadow: 0 0 15px currentColor;
+            letter-spacing: 2px;
+            animation: pulse 0.8s infinite alternate;
+        }
+
+        .timer-container {
+            width: 100%;
+            max-width: 350px;
+            height: 12px;
+            background-color: #333;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        #timer-bar {
+            height: 100%;
+            width: 100%;
+            background-color: var(--timer-green);
+            transition: width 0.05s linear, background-color 0.3s ease;
+        }
+
+        .character-portrait {
+            font-size: 3.5rem;
+            margin: 5px 0;
+            transition: transform 0.2s, opacity 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 60px;
+            width: 60px;
+        }
+
+        .character-portrait.inactive {
+            opacity: 0.3;
+            transform: scale(0.8);
+        }
+
+        .character-portrait.active {
+            opacity: 1;
+            transform: scale(1.1);
+            animation: pulse 1s infinite alternate;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            width: 100%;
+            max-width: 350px;
+            margin: 5px 0;
+        }
+
+        .cell {
+            aspect-ratio: 1;
+            background-color: var(--cell-bg);
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3rem;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .cell:active {
+            background-color: #3a3a3a;
+        }
+
+        .game-img {
+            width: 80%;
+            height: 80%;
+            object-fit: contain;
+            pointer-events: none;
+        }
+
+        .inline-img {
+            height: 1.5rem;
+            width: 1.5rem;
+            object-fit: contain;
+            vertical-align: middle;
+        }
+
+        #restart-btn {
+            margin-top: 15px;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            max-width: 350px;
+        }
+
+        #restart-btn:active {
+            background-color: #388e3c;
+        }
+
+        .win-green {
+            background-color: rgba(76, 175, 80, 0.9) !important;
+            box-shadow: 0 0 20px #4caf50;
+            transform: scale(1.05);
+            z-index: 5;
+        }
+
+        .win-red {
+            background-color: rgba(244, 67, 54, 0.9) !important;
+            box-shadow: 0 0 20px #f44336;
+            transform: scale(1.05);
+            z-index: 5;
+        }
+
+        @keyframes blueShine {
+            0% { box-shadow: inset 0 0 20px var(--cyan-glow), 0 0 20px var(--cyan-glow); background-color: #1e3a5f; transform: scale(0.95); }
+            100% { box-shadow: none; background-color: var(--cell-bg); transform: scale(1); }
+        }
+        .tapped { animation: blueShine 0.35s ease-out; }
+
+        @keyframes zapStrike {
+            0% { background-color: #ffffff; box-shadow: 0 0 30px #ffffff; transform: scale(1.08); z-index: 10; }
+            50% { background-color: #ffeb3b; box-shadow: 0 0 25px #ffeb3b; transform: scale(1.05); }
+            100% { background-color: var(--cell-bg); box-shadow: none; transform: scale(1); }
+        }
+        .zap { animation: zapStrike 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
+
+        @keyframes splashStrike {
+            0% { background-color: #ffffff; box-shadow: 0 0 30px #ffffff, inset 0 0 15px var(--water-glow); transform: scale(1.08); z-index: 10; }
+            50% { background-color: var(--water-glow); box-shadow: 0 0 25px var(--water-glow); transform: scale(1.05); }
+            100% { background-color: var(--cell-bg); box-shadow: none; transform: scale(1); }
+        }
+        .splash { animation: splashStrike 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+        }
+        .shake { animation: shake 0.3s ease-in-out; }
+
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.15); }
+        }
+
+        @keyframes floatObstacle {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-5px) scale(1.05); }
+        }
+        .obstacle-anim { animation: floatObstacle 1.5s infinite ease-in-out; }
+
+        .jumping-emoji {
+            position: fixed;
+            font-size: 3rem;
+            pointer-events: none;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 60px;
+            height: 60px;
+            transition: left 0.3s linear, top 0.3s cubic-bezier(0.2, -0.5, 0.8, 1.5), transform 0.3s ease;
+            transform: translate(-50%, -50%) scale(1);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="debug-bar">
+        <label>
+            <input type="checkbox" id="debug-replacement-toggle">
+            Debug: Piece Replacement
+        </label>
+    </div>
+
+    <h1>⚡ Speed Tic-Tac-Toe</h1>
+    
+    <div id="status-container">
+        <div id="status">Your Turn (🤠)</div>
+    </div>
+    
+    <div class="timer-container">
+        <div id="timer-bar"></div>
+    </div>
+
+    <!-- AI Character (Top) -->
+    <div class="character-portrait inactive" id="ai-character"></div>
+
+    <div class="board" id="board">
+        <div class="cell" data-index="0"></div>
+        <div class="cell" data-index="1"></div>
+        <div class="cell" data-index="2"></div>
+        <div class="cell" data-index="3"></div>
+        <div class="cell" data-index="4"></div>
+        <div class="cell" data-index="5"></div>
+        <div class="cell" data-index="6"></div>
+        <div class="cell" data-index="7"></div>
+        <div class="cell" data-index="8"></div>
+    </div>
+
+    <!-- Player Character (Bottom) -->
+    <div class="character-portrait active" id="player-character"></div>
+
+    <button id="restart-btn">Restart Game</button>
+
+    <script>
+        const cells = document.querySelectorAll('.cell');
+        const statusText = document.getElementById('status');
+        const timerBar = document.getElementById('timer-bar');
+        const restartBtn = document.getElementById('restart-btn');
+        const playerChar = document.getElementById('player-character');
+        const aiChar = document.getElementById('ai-character');
+        const debugToggle = document.getElementById('debug-replacement-toggle');
+
+        let board = Array(9).fill('');
+        let gameActive = true;
+        let isPlayerTurn = true;
+        let isAnimating = false;
+        
+        const TURN_TIME_MS = 2250;
+        let timeLeft = TURN_TIME_MS;
+        let timerInterval;
+        let aiTimeout;
+
+        let obstaclePresent = false;
+        let turnsSinceObstacle = 0;
+        let nextObstacleTurn = 1;
+
+        const winConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]            
+        ];
+
+        // --- ASSET MANAGER ---
+        const assetMap = {
+            '🤠': { type: 'img', src: 'Woody_Default.png', fallback: '🤠' },
+            '😈': { type: 'img', src: 'Ursula_Default.png', fallback: '😈' },
+            '🌩️': { type: 'img', src: 'Emoji_Challenges_Icon_Lightning_Default.png', fallback: '🌩️' },
+            '⚡': { type: 'img', src: 'CraftedPowerUp_LightningBolt_fade.png', fallback: '⚡' },
+            '💧': { type: 'text', fallback: '💧' },
+            '💦': { type: 'text', fallback: '💦' }
+        };
+
+        function renderAsset(key, isInline = false) {
+            const asset = assetMap[key];
+            if (!asset) return '';
+            
+            if (asset.type === 'img') {
+                const imgClass = isInline ? 'inline-img' : 'game-img';
+                return `<img src="${asset.src}" alt="${asset.fallback}" class="${imgClass}" onerror="this.outerHTML='${asset.fallback}'">`;
+            }
+            return asset.fallback;
+        }
+
+        function setStatusContent(htmlContent) {
+            statusText.innerHTML = htmlContent;
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // --- GAME LOGIC ---
+        function initGame() {
+            board = Array(9).fill('');
+            gameActive = true;
+            isPlayerTurn = true;
+            isAnimating = false;
+            
+            obstaclePresent = false;
+            turnsSinceObstacle = 0;
+            nextObstacleTurn = Math.floor(Math.random() * 3) + 1;
+            
+            cells.forEach(cell => {
+                cell.innerHTML = '';
+                cell.className = 'cell'; 
+            });
+            
+            clearTimeout(aiTimeout);
+            clearInterval(timerInterval);
+            
+            playerChar.innerHTML = renderAsset('🤠');
+            aiChar.innerHTML = renderAsset('😈');
+
+            updatePortraits();
+            statusText.className = ''; 
+            setStatusContent(`Your Turn (${renderAsset('🤠', true)})`);
+            statusText.style.color = "var(--text-color)";
+            document.body.classList.remove('shake');
+            
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timeLeft = TURN_TIME_MS;
+            updateTimerUI();
+
+            timerInterval = setInterval(() => {
+                if (isAnimating) return;
+
+                timeLeft -= 50; 
+                updateTimerUI();
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    handleTimeout();
+                }
+            }, 50);
+        }
+
+        function updateTimerUI() {
+            const percentage = (timeLeft / TURN_TIME_MS) * 100;
+            timerBar.style.width = `${percentage}%`;
+
+            if (percentage > 50) {
+                timerBar.style.backgroundColor = "var(--timer-green)";
+            } else if (percentage > 25) {
+                timerBar.style.backgroundColor = "var(--timer-yellow)";
+            } else {
+                timerBar.style.backgroundColor = "var(--timer-red)";
+            }
+        }
+
+        function handleTimeout() {
+            if (!gameActive) return;
+
+            document.body.classList.add('shake');
+            setTimeout(() => document.body.classList.remove('shake'), 300);
+            
+            const activeChar = isPlayerTurn ? renderAsset('🤠', true) : renderAsset('😈', true);
+            setStatusContent(`${activeChar} missed turn!`);
+            statusText.style.color = "var(--timer-red)";
+
+            setTimeout(() => {
+                if (!gameActive) return;
+                statusText.style.color = "var(--text-color)";
+                clearTimeout(aiTimeout);
+                switchTurn();
+            }, 600);
+        }
+
+        function trySpawnObstacle() {
+            if (obstaclePresent || !gameActive) return;
+
+            turnsSinceObstacle++;
+            if (turnsSinceObstacle >= nextObstacleTurn) {
+                const emptyIndices = board.map((val, idx) => val === '' ? idx : null).filter(val => val !== null);
+                
+                if (emptyIndices.length > 0) {
+                    const randomIdx = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+                    const isRow = Math.random() < 0.5;
+                    const symbol = isRow ? '🌩️' : '💧';
+                    
+                    board[randomIdx] = symbol;
+                    const cell = cells[randomIdx];
+                    
+                    cell.innerHTML = renderAsset(symbol);
+                    cell.classList.add('obstacle-anim');
+                    
+                    obstaclePresent = true;
+                    turnsSinceObstacle = 0;
+                    nextObstacleTurn = Math.floor(Math.random() * 3) + 1;
+                }
+            }
+        }
+
+        function handleCellClick(e) {
+            const index = e.target.closest('.cell').getAttribute('data-index');
+            const cellValue = board[index];
+
+            if ((cellValue !== '' && cellValue !== '🌩️' && cellValue !== '💧') || !gameActive || !isPlayerTurn || isAnimating) {
+                return;
+            }
+
+            makeMove(index, '🤠');
+        }
+
+        async function makeMove(index, playerEmoji) {
+            isAnimating = true;
+            clearInterval(timerInterval);
+
+            const targetCell = cells[index];
+            const originalValue = board[index];
+            let shouldPlacePiece = true;
+            
+            targetCell.classList.add('tapped');
+            setTimeout(() => targetCell.classList.remove('tapped'), 350);
+
+            const startEl = playerEmoji === '🤠' ? playerChar : aiChar;
+            const startRect = startEl.getBoundingClientRect();
+            const endRect = targetCell.getBoundingClientRect();
+            
+            const jumper = document.createElement('div');
+            jumper.innerHTML = renderAsset(playerEmoji);
+            jumper.className = 'jumping-emoji';
+            jumper.style.left = `${startRect.left + startRect.width / 2}px`;
+            jumper.style.top = `${startRect.top + startRect.height / 2}px`;
+            
+            document.body.appendChild(jumper);
+            jumper.getBoundingClientRect(); 
+            
+            jumper.style.left = `${endRect.left + endRect.width / 2}px`;
+            jumper.style.top = `${endRect.top + endRect.height / 2}px`;
+            jumper.style.transform = 'translate(-50%, -50%) scale(1.2)';
+
+            await sleep(300);
+            jumper.remove();
+
+            if (originalValue === '🌩️' || originalValue === '💧') {
+                await processObstacleSequence(index, originalValue);
+                
+                if (!debugToggle.checked) {
+                    shouldPlacePiece = false;
+                }
+            }
+
+            if (shouldPlacePiece) {
+                board[index] = playerEmoji;
+                targetCell.innerHTML = renderAsset(playerEmoji);
+            }
+
+            const winningLine = getWinningLine(board, playerEmoji);
+            
+            if (winningLine) {
+                const isPlayer = playerEmoji === '🤠';
+                winningLine.forEach(i => {
+                    cells[i].classList.add(isPlayer ? 'win-green' : 'win-red');
+                });
+                endGame(isPlayer ? 'YOU WIN! 🎉' : 'AI WINS! ☠️', isPlayer);
+            } else if (board.every(c => c !== '' && c !== '🌩️' && c !== '💧')) {
+                endGame("DRAW! 😐", null);
+            } else {
+                isAnimating = false;
+                switchTurn();
+            }
+        }
+
+        async function processObstacleSequence(index, symbol) {
+            obstaclePresent = false;
+            const targetCell = cells[index];
+            targetCell.classList.remove('obstacle-anim');
+            
+            const isLightning = symbol === '🌩️';
+            
+            targetCell.innerHTML = isLightning ? renderAsset('⚡') : renderAsset('💦');
+            setStatusContent(isLightning ? `${renderAsset('⚡', true)} ROW ZAP!` : `${renderAsset('💦', true)} COLUMN SPLASH!`);
+            statusText.style.color = isLightning ? "var(--timer-yellow)" : "var(--water-glow)";
+            
+            await sleep(250);
+
+            const row = Math.floor(index / 3);
+            const col = index % 3;
+            
+            const indicesToClear = isLightning 
+                ? [row * 3, row * 3 + 1, row * 3 + 2] 
+                : [col, col + 3, col + 6];
+
+            const effectClass = isLightning ? 'zap' : 'splash';
+            const effectKey = isLightning ? '⚡' : '💦';
+
+            indicesToClear.forEach(i => {
+                cells[i].classList.add(effectClass);
+                cells[i].innerHTML = renderAsset(effectKey);
+            });
+
+            await sleep(250);
+            indicesToClear.forEach(i => {
+                board[i] = '';
+            });
+
+            await sleep(350);
+            indicesToClear.forEach(i => {
+                cells[i].classList.remove(effectClass);
+                cells[i].innerHTML = '';
+            });
+            
+            statusText.style.color = "var(--text-color)";
+        }
+
+        function switchTurn() {
+            isPlayerTurn = !isPlayerTurn;
+            updatePortraits();
+            
+            const activeChar = isPlayerTurn ? renderAsset('🤠', true) : renderAsset('😈', true);
+            setStatusContent(isPlayerTurn ? `Your Turn (${activeChar})` : `AI's Turn (${activeChar})`);
+            
+            trySpawnObstacle();
+            startTimer();
+
+            if (!isPlayerTurn) {
+                triggerAI();
+            }
+        }
+
+        function updatePortraits() {
+            if (isPlayerTurn) {
+                playerChar.classList.replace('inactive', 'active');
+                aiChar.classList.replace('active', 'inactive');
+            } else {
+                aiChar.classList.replace('inactive', 'active');
+                playerChar.classList.replace('active', 'inactive');
+            }
+        }
+
+        // --- OPTIMAL AI ENGINE (MINIMAX + SIMULATION) ---
+        function simulateBoardState(curBoard, index, player, replacePiece) {
+            const next = [...curBoard];
+            const targetVal = next[index];
+
+            if (targetVal === '🌩️') {
+                const row = Math.floor(index / 3);
+                for (let c = 0; c < 3; c++) next[row * 3 + c] = '';
+                if (replacePiece) next[index] = player;
+            } else if (targetVal === '💧') {
+                const col = index % 3;
+                for (let r = 0; r < 3; r++) next[r * 3 + col] = '';
+                if (replacePiece) next[index] = player;
+            } else {
+                next[index] = player;
+            }
+            return next;
+        }
+
+        function evaluateBoard(b) {
+            let score = 0;
+            for (let condition of winConditions) {
+                let aiCount = 0;
+                let playerCount = 0;
+                for (let i of condition) {
+                    if (b[i] === '😈') aiCount++;
+                    else if (b[i] === '🤠') playerCount++;
+                }
+                if (aiCount > 0 && playerCount === 0) {
+                    if (aiCount === 2) score += 25;
+                    else if (aiCount === 1) score += 5;
+                } else if (playerCount > 0 && aiCount === 0) {
+                    if (playerCount === 2) score -= 30;
+                    else if (playerCount === 1) score -= 6;
+                }
+            }
+            // Strategic position bonuses
+            if (b[4] === '😈') score += 8;
+            else if (b[4] === '🤠') score -= 8;
+
+            const corners = [0, 2, 6, 8];
+            for (let c of corners) {
+                if (b[c] === '😈') score += 2;
+                else if (b[c] === '🤠') score -= 2;
+            }
+            return score;
+        }
+
+        function minimax(currentBoard, depth, isMaximizing, alpha, beta, maxDepth, replacePiece) {
+            if (getWinningLine(currentBoard, '😈')) return 1000 - depth;
+            if (getWinningLine(currentBoard, '🤠')) return -1000 + depth;
+
+            const validMoves = currentBoard.map((val, idx) => (val === '' || val === '🌩️' || val === '💧') ? idx : null).filter(val => val !== null);
+            if (validMoves.length === 0 || depth >= maxDepth) {
+                return evaluateBoard(currentBoard);
+            }
+
+            if (isMaximizing) {
+                let maxEval = -Infinity;
+                for (let idx of validMoves) {
+                    const next = simulateBoardState(currentBoard, idx, '😈', replacePiece);
+                    const ev = minimax(next, depth + 1, false, alpha, beta, maxDepth, replacePiece);
+                    maxEval = Math.max(maxEval, ev);
+                    alpha = Math.max(alpha, ev);
+                    if (beta <= alpha) break;
+                }
+                return maxEval;
+            } else {
+                let minEval = Infinity;
+                for (let idx of validMoves) {
+                    const next = simulateBoardState(currentBoard, idx, '🤠', replacePiece);
+                    const ev = minimax(next, depth + 1, true, alpha, beta, maxDepth, replacePiece);
+                    minEval = Math.min(minEval, ev);
+                    beta = Math.min(beta, ev);
+                    if (beta <= alpha) break;
+                }
+                return minEval;
+            }
+        }
+
+        function getBestMove() {
+            const validMoves = board.map((val, idx) => (val === '' || val === '🌩️' || val === '💧') ? idx : null).filter(val => val !== null);
+            if (validMoves.length === 0) return -1;
+            if (validMoves.length === 1) return validMoves[0];
+
+            const replacePiece = debugToggle.checked;
+
+            // Identify Player Immediate Threats
+            const playerWinningMoves = [];
+            for (let idx of validMoves) {
+                const simulated = simulateBoardState(board, idx, '🤠', replacePiece);
+                if (getWinningLine(simulated, '🤠')) {
+                    playerWinningMoves.push(idx);
+                }
+            }
+
+            // Minimax Search and evaluation across all valid moves
+            const scoredMoves = [];
+            const maxDepth = 6;
+
+            for (let idx of validMoves) {
+                const next = simulateBoardState(board, idx, '😈', replacePiece);
+                let score = 0;
+
+                if (getWinningLine(next, '😈')) {
+                    score = 1000;
+                } else {
+                    score = minimax(next, 1, false, -Infinity, Infinity, maxDepth, replacePiece);
+                }
+
+                // If player was about to win, reward moves that neutralize that threat
+                if (playerWinningMoves.length > 0) {
+                    const stillThreatened = playerWinningMoves.some(threatIdx => {
+                        if (next[threatIdx] === '' || next[threatIdx] === '🌩️' || next[threatIdx] === '💧') {
+                            const testSim = simulateBoardState(next, threatIdx, '🤠', replacePiece);
+                            return !!getWinningLine(testSim, '🤠');
+                        }
+                        return false;
+                    });
+                    if (!stillThreatened) {
+                        score += 350;
+                    }
+                }
+
+                scoredMoves.push({ idx, score });
+            }
+
+            let maxScore = -Infinity;
+            for (const item of scoredMoves) {
+                if (item.score > maxScore) maxScore = item.score;
+            }
+
+            const optimalMoves = scoredMoves.filter(m => m.score === maxScore).map(m => m.idx);
+            const suboptimalMoves = scoredMoves.filter(m => m.score < maxScore).map(m => m.idx);
+
+            // 25% chance to make a non-optimal move
+            const shouldMakeMistake = Math.random() < 0.25;
+
+            if (shouldMakeMistake) {
+                if (suboptimalMoves.length > 0) {
+                    return suboptimalMoves[Math.floor(Math.random() * suboptimalMoves.length)];
+                } else if (validMoves.length > 1) {
+                    const nonPrimary = validMoves.filter(idx => idx !== optimalMoves[0]);
+                    if (nonPrimary.length > 0) {
+                        return nonPrimary[Math.floor(Math.random() * nonPrimary.length)];
+                    }
+                }
+            }
+
+            // 75% of the time (optimal): prioritize center then corners on ties
+            const priority = [4, 0, 2, 6, 8, 1, 3, 5, 7];
+            optimalMoves.sort((a, b) => priority.indexOf(a) - priority.indexOf(b));
+
+            return optimalMoves[0];
+        }
+
+        function triggerAI() {
+            const bestMoveIndex = getBestMove();
+            if (bestMoveIndex === -1) return;
+
+            // Prompt execution within the 2.25s timer
+            const thinkTime = Math.random() * 400 + 250; 
+
+            aiTimeout = setTimeout(() => {
+                if (!gameActive || isPlayerTurn) return;
+                makeMove(bestMoveIndex, '😈');
+            }, thinkTime);
+        }
+
+        function getWinningLine(boardState, player) {
+            return winConditions.find(condition => {
+                return condition.every(index => boardState[index] === player);
+            });
+        }
+
+        function endGame(message, isPlayerWin) {
+            gameActive = false;
+            isAnimating = false;
+            clearInterval(timerInterval);
+            clearTimeout(aiTimeout);
+            timerBar.style.width = '0%';
+            
+            setStatusContent(message);
+            statusText.classList.add('huge-status');
+            
+            if (isPlayerWin === true) {
+                statusText.style.color = "var(--timer-green)";
+            } else if (isPlayerWin === false) {
+                statusText.style.color = "var(--timer-red)";
+            } else {
+                statusText.style.color = "var(--timer-yellow)";
+            }
+        }
+
+        cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+        restartBtn.addEventListener('click', initGame);
+
+        initGame();
+    </script>
+</body>
+</html>
